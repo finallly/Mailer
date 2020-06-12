@@ -1,5 +1,6 @@
 import logging
 import smtplib
+from sqlHandler import SQLHandler
 
 from aiogram import Bot, Dispatcher, executor, types
 
@@ -11,16 +12,34 @@ fromemail = 'testmailforspamm@mail.ru'
 password = 'faksjflkj2348726234SDF'
 smtpserver = 'smtp.mail.ru:587'
 
-server = smtplib.SMTP(smtpserver)
-server.starttls()
-server.login(fromemail, password)
+database = SQLHandler('userDataBase')
 
 
-@dispatcher.message_handler()
-async def echo(message: types.Message):
-    # await message.answer(f'write command with the same arguments - target_mail_address message amount_of_mails')
+@dispatcher.message_handler(commands=['join'])
+async def add_new_user(message: types.Message):
+    database.add_user(message.from_user.username)
 
+    await message.answer('join successful!')
+
+
+@dispatcher.message_handler(commands=['leave'])
+async def change_user_state(message: types.Message):
+    database.change_status(message.from_user.username, False)
+
+    await message.answer('leave successful!')
+
+    # TODO: maybe put these 2 commands in one dispatcher?
+
+
+@dispatcher.message_handler(commands=['send'])
+async def start_spam(message: types.Message):
     to_email, text, amount = message.text.split()
+
+    server = smtplib.SMTP(smtpserver)
+    server.starttls()
+    server.login(fromemail, password)
+
+    # TODO: create additional file, which start the SMTP server and creates connections
 
     for _ in range(int(amount)):
         server.sendmail(fromemail, to_email, text)
@@ -31,33 +50,3 @@ async def echo(message: types.Message):
 
 if __name__ == '__main__':
     executor.start_polling(dispatcher, skip_updates=True)
-
-
-# import socket
-#
-# server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-# server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-# server_socket.bind(('localhost', 5000))
-# server_socket.listen()
-#
-# flag = True
-#
-# while flag:
-#     client_socket, address = server_socket.accept()
-#     print('connection set')
-#
-#     while True:
-#         try:
-#             request = client_socket.recv(1024).strip()
-#         except ConnectionResetError as error:
-#             print(str(error))
-#             break
-#
-#         if not request:
-#             flag = not flag
-#             print('message is empty')
-#             break
-#         else:
-#             response = 'hello\n' + str(address) + '\n'
-#             response = response.encode() + request
-#             client_socket.send(response)
