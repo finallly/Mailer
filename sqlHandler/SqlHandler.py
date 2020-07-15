@@ -1,5 +1,4 @@
 import sqlite3 as sql
-from typing import BinaryIO
 
 
 class SQLHandler:
@@ -16,11 +15,18 @@ class SQLHandler:
 
     def change_status(self, user_name, status):
         with self.connection:
-            self.cursor.execute("UPDATE 'users' SET 'is_active' = ? WHERE 'user_name' = ?", (status, user_name))
+            self.cursor.execute(f"UPDATE 'users' SET 'is_active' = {status} WHERE 'user_name' = '{user_name}'")
+            print(status)
+            self.connection.commit()
+
+    def check_status(self, user_name):
+        with self.connection:
+            self.cursor.execute(f"SELECT 'is_active' FROM 'users' WHERE 'user_name' = '{user_name}'")
+            return self.cursor.fetchall()
 
     def check_user(self, user_name):
         with self.connection:
-            self.cursor.execute("SELECT * FROM 'users' WHERE 'user_name' = ?", (user_name,))
+            self.cursor.execute(f"SELECT * FROM users WHERE user_name = '{user_name}'")
             result = self.cursor.fetchall()
             return bool(len(result))
 
