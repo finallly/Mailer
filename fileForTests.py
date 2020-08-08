@@ -1,16 +1,16 @@
 import logging
-import smtplib
+import configparser
 from sqlHandler import SQLHandler
+from smtpConnect import smtpConnect
 
 from aiogram import Bot, Dispatcher, executor, types
 
-logging.basicConfig(level=logging.INFO)
-bot = Bot(token='999223265:AAFjOnam5HWc4CfJR78YFwF_r6SSGNyWWWc')
-dispatcher = Dispatcher(bot)
+config = configparser.ConfigParser()
+config.read('config.ini')
 
-fromemail = 'testmailforspamm@mail.ru'
-password = 'faksjflkj2348726234SDF'
-smtpserver = 'smtp.mail.ru:587'
+logging.basicConfig(level=logging.INFO)
+bot = Bot(token=config['TOKEN']['token'])
+dispatcher = Dispatcher(bot)
 
 database = SQLHandler('userDataBase')
 
@@ -41,15 +41,13 @@ async def start_spam(message: types.Message):
 
     _, to_email, text, amount = message.text.split()
 
-    server = smtplib.SMTP(smtpserver)
-    server.starttls()
-    server.login(fromemail, password)
-
-    # TODO: create additional file, which start the SMTP server and creates connections
-
-    for _ in range(int(amount)):
-        server.sendmail(fromemail, to_email, text)
-    server.quit()
+    with smtpConnect(
+        config['SERVER']['server'],
+        config['SERVER']['from_mail'],
+        config['SERVER']['password']
+    ) as server:
+        for _ in range(int(amount)):
+            server.sendmail(config['SERVER']['from_mail'], to_email, text)
 
     await message.answer(f'{amount} email to {to_email} were sent!')
 
