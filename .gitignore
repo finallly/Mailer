@@ -6,6 +6,9 @@ __pycache__/
 #configs
 config.ini
 
+#files
+mails.csv
+
 # Distribution / packaging
 .idea/
 qtFiles/converter.bat
@@ -68,3 +71,4 @@ ENV/
 env.bak/
 venv.bak/
 
+mails.csv

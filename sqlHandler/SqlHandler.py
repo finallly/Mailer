@@ -3,6 +3,8 @@ import sqlite3 as sql
 
 class SQLHandler:
 
+    # TODO: database format: uid, nametag, username, info: {'date': [('mail', 'text', count), ...]}
+
     def __init__(self, database_file):
         self.connection = sql.connect(database_file)
         self.cursor = self.connection.cursor()
