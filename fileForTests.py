@@ -7,6 +7,8 @@ from aiogram import Bot, Dispatcher, executor, types
 
 from sqlHandler import SQLHandler
 from smtpConnect import smtpConnect
+from errorHandling import errorHandler, SMTPDataError, SMTPAuthenticationError, SMTPConnectError, \
+    SMTPServerDisconnected, SMTPSenderRefused
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -30,10 +32,18 @@ data = [_ for _ in csv.reader(open(csv_file_name, mode=reading_mode, encoding=cs
 
 
 def worker(message: str, to_email: str, mail_index: int) -> None:
-    with smtpConnect(server_address, data[mail_index][mail_address_index],
-                     data[mail_index][mail_password_index]) as server:
-        server.sendmail(data[mail_index][mail_address_index], to_email,
-                        message)
+    try:
+        print(server_address, data[mail_index][mail_address_index],
+              data[mail_index][mail_password_index], data[mail_index][mail_address_index], to_email,
+              message)
+        with smtpConnect(server_address, data[mail_index][mail_address_index],
+                         data[mail_index][mail_password_index]) as server:
+            server.sendmail(data[mail_index][mail_address_index], to_email,
+                            message)
+    except (
+            SMTPDataError, SMTPAuthenticationError, SMTPConnectError, SMTPServerDisconnected,
+            SMTPSenderRefused) as error:
+        errorHandler(error)
 
 
 def thread_gen(count: int, func, to_email: str, text: str) -> None:
