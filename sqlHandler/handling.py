@@ -1,36 +1,40 @@
-import sqlite3 as sql
+from .context_handling import SqlHandler
+from datetime import datetime
+import json
 
 
 class SQLHandler:
 
-    # TODO: database format: uid, nametag, username, info: {'date': [('mail', 'text', count), ...]}
+    def __init__(self, host: str, user: str, password: str, database: str):
+        self.host = host
+        self.user_name = user
+        self.password = password
+        self.database = database
 
-    def __init__(self, database_file):
-        self.connection = sql.connect(database_file)
-        self.cursor = self.connection.cursor()
+    def add_record(self, table: str, username: str, record: tuple):
+        """
+        adds data to database
+        :param table: table name
+        :param username: ...
+        :param record: data
+        :return: None
+        """
 
-    def add_user(self, user_name, status=True):
-        with self.connection:
-            self.cursor.execute("INSERT INTO 'users' ('user_name', 'is_active') VALUES (?, ?)",
-                                (user_name, status))
-            self.connection.commit()
+        # TODO: here must be error handling!!!
 
-    def change_status(self, user_name, status):
-        # TODO: here i can rewrite the context manager!!!
-        with self.connection:
-            self.cursor.execute(f"UPDATE 'users' SET 'is_active' = {status} WHERE 'user_name' = '{user_name}'")
-            self.connection.commit()
+        with SqlHandler(
+                self.host,
+                self.user_name,
+                self.password,
+                self.database
+        ) as sql:
+            sql.execute(f'SELECT info FROM {table} WHERE username = "{username}"')
 
-    def check_status(self, user_name):
-        with self.connection:
-            self.cursor.execute(f"SELECT 'is_active' FROM 'users' WHERE 'user_name' = '{user_name}'")
-            return self.cursor.fetchall()
+            data, date = json.loads(sql.fetchall()[bool(False)][bool(False)]), datetime.now().strftime(
+                "%d.%m.%Y-%H:%M:%S")
+            if date in data:
+                data[date] += [record[0], record[1], record[2]]
+            else:
+                data[date] = [record[0], record[1], record[2]]
 
-    def check_user(self, user_name):
-        with self.connection:
-            self.cursor.execute(f"SELECT * FROM users WHERE user_name = '{user_name}'")
-            result = self.cursor.fetchall()
-            return bool(len(result))
-
-    def close_connection(self):
-        self.connection.close()
+            sql.execute(f"UPDATE {table} SET info = '{json.dumps(data)}' WHERE username = '{username}'")
