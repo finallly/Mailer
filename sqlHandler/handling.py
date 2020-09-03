@@ -19,7 +19,6 @@ class SQLHandler:
         # TODO: here i can rewrite the context manager!!!
         with self.connection:
             self.cursor.execute(f"UPDATE 'users' SET 'is_active' = {status} WHERE 'user_name' = '{user_name}'")
-            print(status)
             self.connection.commit()
 
     def check_status(self, user_name):
