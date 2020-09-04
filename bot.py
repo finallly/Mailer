@@ -44,8 +44,7 @@ def worker(message: str, to_email: str, mail_index: int) -> None:
                          data[mail_index][mail_password_index]) as server:
             server.sendmail(data[mail_index][mail_address_index], to_email,
                             message)
-    except (
-            SMTPDataError, SMTPAuthenticationError, SMTPConnectError, SMTPServerDisconnected,
+    except (SMTPDataError, SMTPAuthenticationError, SMTPConnectError, SMTPServerDisconnected,
             SMTPSenderRefused) as error:
         errorHandler(error)
 
@@ -62,11 +61,14 @@ def thread_gen(count: int, func, to_email: str, text: str) -> None:
         thread.join()
 
 
-@dispatcher.message_handler(commands=['test'])
+@dispatcher.message_handler(commands=['test_up', 'test_add'])
 async def send(message: types.Message):
-    _, to_email, text, amount = message.text.split()
+    command, one, two, three = message.text.split()
 
-    database.add_record(table_name, message.from_user.username, (to_email, text, amount))
+    if command == '/test_up':
+        database.update_record(table_name, message.from_user.username, (one, two, three))
+    elif command == '/test_add':
+        database.add_user(table_name, message.from_user.first_name, message.from_user.username)
 
     await message.answer('test successful!')
 
