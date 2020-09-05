@@ -6,4 +6,9 @@ class Consts:
     time_format = '%H:%M:%S'
     nametag = 'nametag'
     username = 'username'
-    info = json.dumps({})
+    info = 'info'
+    status = 'status'
+
+
+class Types:
+    json_dict = json.dumps({})

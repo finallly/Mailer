@@ -1,6 +1,6 @@
 from .context_handling import SqlHandler
 from datetime import datetime
-from .consts import Consts
+from .consts import Consts, Types
 import json
 
 
@@ -55,5 +55,22 @@ class SQLHandler:
                 self.password,
                 self.database
         ) as sql:
-            sql.execute(f"INSERT INTO {table} ({Consts.nametag}, {Consts.username}, {Consts.info}) VALUE (?, ?, ?)",
-                        (nametag, username))
+            sql.execute(f"INSERT INTO {table} ({Consts.nametag}, {Consts.username}, "
+                        f"{Consts.info}, {Consts.status}) VALUE (?, ?, ?, ?)",
+                        (nametag, username, Types.json_dict, False))
+
+    def change_status(self, table: str, username: str, status: bool) -> None:
+        """
+        # TODO: add here!
+        :param table:
+        :param username:
+        :param status:
+        :return:
+        """
+        with SqlHandler(
+                self.host,
+                self.user_name,
+                self.password,
+                self.database
+        ) as sql:
+            sql.execute(f"UPDATE {table} SET status = {status} WHERE username = '{username}'")
