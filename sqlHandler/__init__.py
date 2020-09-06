@@ -1,1 +1,1 @@
-from .SqlHandler import SQLHandler
+from .handling import SQLHandler

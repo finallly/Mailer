@@ -8,6 +8,8 @@ config.ini
 
 #files
 mails.csv
+freeze.bat
+test.py
 
 # Distribution / packaging
 .idea/
@@ -70,5 +72,3 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-
-mails.csv
