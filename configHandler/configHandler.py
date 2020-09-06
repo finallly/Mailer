@@ -1,10 +1,11 @@
 import configparser
+from abc import ABC, abstractmethod
 
 config = configparser.ConfigParser()
 config.read('config.ini')
 
 
-class ConfigHandler:
+class ConfigHandler(ABC):
     csv_file_name = config['DATA']['file_name']
     reading_mode = config['DATA']['mode']
     csv_delimiter = config['DATA']['delimiter']
@@ -22,3 +23,7 @@ class ConfigHandler:
     mail_address_index = int(config['DATA']['mail_index'])
 
     token = config['TOKEN']['token']
+
+    @abstractmethod
+    def do_not_inherit(self):
+        pass

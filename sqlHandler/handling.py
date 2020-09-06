@@ -32,18 +32,19 @@ class SQLHandler:
             sql.execute(f"UPDATE {table} SET info = '{json.dumps(data)}' WHERE username = '{username}'")
 
     @staticmethod
-    def add_user(table: str, nametag: str, username: str) -> None:
+    def add_user(table: str, first: str, last: str,  username: str) -> None:
         """
         # TODO: docstring here!
+        :param first:
+        :param last:
         :param table:
-        :param nametag:
         :param username:
         :return: None
         """
         with SqlHandler() as sql:
-            sql.execute(f"INSERT INTO {table} ({Consts.nametag}, {Consts.username}, "
-                        f"{Consts.info}, {Consts.status}) VALUE (?, ?, ?, ?)",
-                        (nametag, username, Types.json_dict, False))
+            sql.execute(f"INSERT INTO {table} ({Consts.first_name}, {Consts.last_name}, {Consts.username}, "
+                        f"{Consts.info}, {Consts.status}) VALUES (%s, %s, %s, %s, %s)",
+                        (first, last, username, Types.json_dict, False))
 
     @staticmethod
     def change_status(table: str, username: str, status: bool) -> None:

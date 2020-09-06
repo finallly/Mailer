@@ -51,7 +51,8 @@ async def send(message: types.Message):
     if command == '/test_up':
         database.update_record(ConfigHandler.table_name, message.from_user.username, (one, two, three))
     elif command == '/test_add':
-        database.add_user(ConfigHandler.table_name, message.from_user.first_name, message.from_user.username)
+        database.add_user(ConfigHandler.table_name, message.from_user.first_name, message.from_user.last_name,
+                          message.from_user.username)
 
     await message.answer('test successful!')
 

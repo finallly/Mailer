@@ -1,16 +1,16 @@
 import mysql.connector as mysql
-from configparser import ConfigParser
+from configHandler import ConfigHandler
 
 
 class SqlHandler(object):
 
     def __init__(self):
         self.connection = mysql.connect(
-            host=ConfigParser.database_host,
-            user=ConfigParser.database_user,
-            passwd=ConfigParser.database_pass,
-            database=ConfigParser.database_name,
-            auth_plugin=ConfigParser.auth_plugin
+            host=ConfigHandler.database_host,
+            user=ConfigHandler.database_user,
+            passwd=ConfigHandler.database_pass,
+            database=ConfigHandler.database_name,
+            auth_plugin=ConfigHandler.auth_plugin
         )
 
     def __enter__(self):
