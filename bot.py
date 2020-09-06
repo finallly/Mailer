@@ -1,5 +1,4 @@
 import logging
-import configparser
 import csv
 from random import randrange
 from threading import Thread
@@ -7,42 +6,26 @@ from aiogram import Bot, Dispatcher, executor, types
 
 from sqlHandler import SQLHandler
 from smtpConnect import smtpConnect
+from configHandler import ConfigHandler
 from errorHandling import errorHandler, SMTPDataError, SMTPAuthenticationError, SMTPConnectError, \
     SMTPServerDisconnected, SMTPSenderRefused
 
-config = configparser.ConfigParser()
-config.read('config.ini')
-
-# TODO: maybe store configs in environment variables??
-
-csv_file_name = config['DATA']['file_name']
-
-reading_mode = config['DATA']['mode']
-csv_delimiter = config['DATA']['delimiter']
-server_address = config['DATA']['server']
-csv_encoding = config['DATA']['encoding']
-mail_address_index = int(config['DATA']['mail_index'])
-mail_password_index = int(config['DATA']['password_index'])
-
-database_host = config['DATA']['db_host']
-database_user = config['DATA']['db_user']
-database_pass = config['DATA']['db_pass']
-database_name = config['DATA']['db_name']
-table_name = config['DATA']['table_name']
-
 logging.basicConfig(level=logging.INFO)
-bot = Bot(token=config['TOKEN']['token'])
+bot = Bot(token=ConfigHandler.token)
 dispatcher = Dispatcher(bot)
 
-database = SQLHandler(database_host, database_user, database_pass, database_name)
-data = [_ for _ in csv.reader(open(csv_file_name, mode=reading_mode, encoding=csv_encoding), delimiter=csv_delimiter)]
+database = SQLHandler()
+
+data = [_ for _ in csv.reader(
+    open(ConfigHandler.csv_file_name, mode=ConfigHandler.reading_mode, encoding=ConfigHandler.csv_encoding),
+    delimiter=ConfigHandler.csv_delimiter)]
 
 
 def worker(message: str, to_email: str, mail_index: int) -> None:
     try:
-        with smtpConnect(server_address, data[mail_index][mail_address_index],
-                         data[mail_index][mail_password_index]) as server:
-            server.sendmail(data[mail_index][mail_address_index], to_email,
+        with smtpConnect(ConfigHandler.server_address, data[mail_index][ConfigHandler.mail_address_index],
+                         data[mail_index][ConfigHandler.mail_password_index]) as server:
+            server.sendmail(data[mail_index][ConfigHandler.mail_address_index], to_email,
                             message)
     except (SMTPDataError, SMTPAuthenticationError, SMTPConnectError, SMTPServerDisconnected,
             SMTPSenderRefused) as error:
@@ -66,9 +49,9 @@ async def send(message: types.Message):
     command, one, two, three = message.text.split()
 
     if command == '/test_up':
-        database.update_record(table_name, message.from_user.username, (one, two, three))
+        database.update_record(ConfigHandler.table_name, message.from_user.username, (one, two, three))
     elif command == '/test_add':
-        database.add_user(table_name, message.from_user.first_name, message.from_user.username)
+        database.add_user(ConfigHandler.table_name, message.from_user.first_name, message.from_user.username)
 
     await message.answer('test successful!')
 

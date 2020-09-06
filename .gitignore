@@ -9,6 +9,7 @@ config.ini
 #files
 mails.csv
 freeze.bat
+test.py
 
 # Distribution / packaging
 .idea/
