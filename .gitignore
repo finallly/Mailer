@@ -8,6 +8,7 @@ config.ini
 
 #files
 mails.csv
+freeze.bat
 
 # Distribution / packaging
 .idea/
@@ -70,5 +71,3 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-
-mails.csv
