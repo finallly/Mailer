@@ -44,18 +44,23 @@ def thread_gen(count: int, func, to_email: str, text: str) -> None:
         thread.join()
 
 
-@dispatcher.message_handler(commands=['test_up', 'test_add'])
+@dispatcher.message_handler(commands=['test_up', 'test_add', 'test_change'])
 async def send(message: types.Message):
-    command, one, two, three = message.text.split()
-
-    if command == '/test_up':
-        database.update_record(ConfigHandler.table_name, message.from_user.username, (one, two, three))
-    elif command == '/test_add':
-        database.add_user(ConfigHandler.table_name, message.from_user.first_name, message.from_user.last_name,
-                          message.from_user.username)
-
-    await message.answer('test successful!')
-
+    text = message.text.split(' ')
+    if text[0] == '/test_up':
+        database.update_record(ConfigHandler.table_name, message.from_user.username, text[1])
+        await message.answer('test successful!')
+    elif text[0] == '/test_add':
+        if not database.check_user(ConfigHandler.table_name, message.from_user.username):
+            print(message.from_user)
+            database.add_user(ConfigHandler.table_name, message.from_user.first_name, message.from_user.last_name,
+                              message.from_user.username)
+            await message.answer('added successful')
+        else:
+            await message.answer('user already in database')
+    elif text[0] == '/test_change':
+        database.change_status(ConfigHandler.table_name, message.from_user.username, text[1])
+        await message.answer('state changed successfully')
 
 if __name__ == '__main__':
     executor.start_polling(dispatcher, skip_updates=True)

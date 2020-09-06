@@ -7,7 +7,7 @@ import json
 class SQLHandler:
 
     @staticmethod
-    def update_record(table: str, username: str, record: tuple) -> None:
+    def update_record(table: str, username: str, record: list) -> None:
         """
         adds data to database # FIXME: fix this retarded docstring
         :param table: table name
@@ -25,9 +25,9 @@ class SQLHandler:
                 Consts.date_format)
             now = datetime.now().strftime(Consts.time_format)
             if date in data:
-                data[date] += [[record[0], record[1], record[2], now]]
+                data[date] += [[now, record]]
             else:
-                data[date] = [[record[0], record[1], record[2], now]]
+                data[date] = [[now, record]]
 
             sql.execute(f"UPDATE {table} SET info = '{json.dumps(data)}' WHERE username = '{username}'")
 
@@ -57,3 +57,25 @@ class SQLHandler:
         """
         with SqlHandler() as sql:
             sql.execute(f"UPDATE {table} SET status = {status} WHERE username = '{username}'")
+
+    @staticmethod
+    def check_user(table: str, username: str) -> bool:
+        """
+
+        :param table:
+        :param username:
+        :return:
+        """
+        with SqlHandler() as sql:
+            sql.execute(f"SELECT * FROM {table} WHERE username = '{username}'")
+            result = sql.fetchall()
+            return bool(len(result))
+
+    @staticmethod
+    def get_user_info(table: str, username: str) -> None:
+        with SqlHandler() as sql:
+            sql.execute(f"SELECT info FROM {table} WHERE username = '{username}'")
+            result = sql.fetchall()
+
+
+
