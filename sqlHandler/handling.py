@@ -7,11 +7,11 @@ import json
 class SQLHandler:
 
     @staticmethod
-    def update_record(table: str, username: str, record: list) -> None:
+    def update_record(table: str, id: int, record: list) -> None:
         """
         adds data to database # FIXME: fix this retarded docstring
+        :param id:
         :param table: table name
-        :param username: ...
         :param record: data
         :return: None
         """
@@ -19,7 +19,7 @@ class SQLHandler:
         # TODO: here must be error handling!!!
 
         with SqlHandler() as sql:
-            sql.execute(f'SELECT info FROM {table} WHERE username = "{username}"')
+            sql.execute(f'SELECT {Consts.info} FROM {table} WHERE {Consts.id} = "{id}"')
 
             data, date = json.loads(sql.fetchall()[bool(False)][bool(False)]), datetime.now().strftime(
                 Consts.date_format)
@@ -29,12 +29,13 @@ class SQLHandler:
             else:
                 data[date] = [[now, record]]
 
-            sql.execute(f"UPDATE {table} SET info = '{json.dumps(data)}' WHERE username = '{username}'")
+            sql.execute(f"UPDATE {table} SET {Consts.info} = '{json.dumps(data)}' WHERE {Consts.id} = '{id}'")
 
     @staticmethod
-    def add_user(table: str, first: str, last: str,  username: str) -> None:
+    def add_user(table: str, first: str, last: str, username: str, id: int) -> None:
         """
         # TODO: docstring here!
+        :param id:
         :param first:
         :param last:
         :param table:
@@ -42,40 +43,68 @@ class SQLHandler:
         :return: None
         """
         with SqlHandler() as sql:
-            sql.execute(f"INSERT INTO {table} ({Consts.first_name}, {Consts.last_name}, {Consts.username}, "
-                        f"{Consts.info}, {Consts.status}) VALUES (%s, %s, %s, %s, %s)",
-                        (first, last, username, Types.json_dict, False))
+            sql.execute(
+                f"INSERT INTO {table} ({Consts.first_name}, {Consts.last_name}, {Consts.username}, {Consts.info}, "
+                f"{Consts.status}, {Consts.id}, {Consts.is_blocked}) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                (first, last, username, Types.json_dict, False, id, False))
 
     @staticmethod
-    def change_status(table: str, username: str, status: bool) -> None:
+    def change_status(table: str, id: int, status: bool) -> None:
         """
         # TODO: add here!
+        :param id:
         :param table:
-        :param username:
         :param status:
         :return:
         """
         with SqlHandler() as sql:
-            sql.execute(f"UPDATE {table} SET status = {status} WHERE username = '{username}'")
+            sql.execute(f"UPDATE {table} SET {Consts.status} = {status} WHERE {Consts.id} = '{id}'")
 
     @staticmethod
-    def check_user(table: str, username: str) -> bool:
+    def check_user(table: str, id: int) -> bool:
         """
 
+        :param id:
         :param table:
-        :param username:
         :return:
         """
         with SqlHandler() as sql:
-            sql.execute(f"SELECT * FROM {table} WHERE username = '{username}'")
+            sql.execute(f"SELECT * FROM {table} WHERE {Consts.id} = '{id}'")
             result = sql.fetchall()
             return bool(len(result))
 
     @staticmethod
-    def get_user_info(table: str, username: str) -> None:
+    def get_user_info(table: str, id: int) -> None:
+        """
+
+        :param table:
+        :param id:
+        :return:
+        """
         with SqlHandler() as sql:
-            sql.execute(f"SELECT info FROM {table} WHERE username = '{username}'")
+            sql.execute(f"SELECT {Consts.info} FROM {table} WHERE {Consts.id} = '{id}'")
             result = sql.fetchall()
 
+    @staticmethod
+    def check_user_status(table: str, id: int) -> bool:
+        """
 
+        :param table:
+        :param id:
+        :return:
+        """
+        with SqlHandler() as sql:
+            sql.execute(f"SELECT {Consts.status} FROM {table} WHERE {Consts.id} = '{id}'")
+            result = bool(int(sql.fetchall()[0][0]))
+            return result
 
+    @staticmethod
+    def block_user(table: str, id: int):
+        """
+
+        :param table:
+        :param id:
+        :return:
+        """
+        with SqlHandler() as sql:
+            sql.execute(f"UPDATE {table} SET {Consts.is_blocked} = {True} WHERE {Consts.id} = '{id}'")
