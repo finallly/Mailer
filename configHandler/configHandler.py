@@ -32,6 +32,8 @@ class ConfigHandler(ABC):
 
     token = config['TOKEN']['token']
 
+    admins = config['ADMIN']['list_id']
+
     attack_link = f"{api_protocol}://{api_host}:{api_port}/{attack_start}"
     status_link = f"{api_protocol}://{api_host}:{api_port}/{count_info}"
 

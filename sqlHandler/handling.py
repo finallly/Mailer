@@ -7,7 +7,7 @@ import json
 class SQLHandler:
 
     @staticmethod
-    def update_record(table: str, id: int, record: list) -> None:
+    def update_record(table: str, id: int, record: str) -> None:
         """
         adds data to database # FIXME: fix this retarded docstring
         :param id:
