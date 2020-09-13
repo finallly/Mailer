@@ -1,6 +1,7 @@
 import logging
 import csv
 import requests
+import ast
 
 from random import randrange
 from threading import Thread
@@ -27,51 +28,63 @@ data = [_ for _ in csv.reader(
     delimiter=ConfigHandler.csv_delimiter)]
 
 
-def worker(message: str, to_email: str, mail_index: int) -> None:
-    try:
-        with smtpConnect(ConfigHandler.server_address, data[mail_index][ConfigHandler.mail_address_index],
-                         data[mail_index][ConfigHandler.mail_password_index]) as server:
-            server.sendmail(data[mail_index][ConfigHandler.mail_address_index], to_email,
-                            message)
-    except (SMTPDataError, SMTPAuthenticationError, SMTPConnectError, SMTPServerDisconnected,
-            SMTPSenderRefused) as error:
-        errorHandler(error)
-
-
-def thread_gen(count: int, func, to_email: str, text: str) -> None:
-    database_indexes = [randrange(len(data)) for _ in range(count)]
-
-    threads = [
-        Thread(target=func, args=(text, to_email, index)) for index in database_indexes
-    ]
-    for thread in threads:
-        thread.start()
-    for thread in threads:
-        thread.join()
+# def worker(message: str, to_email: str, mail_index: int) -> None:
+#     try:
+#         with smtpConnect(ConfigHandler.server_address, data[mail_index][ConfigHandler.mail_address_index],
+#                          data[mail_index][ConfigHandler.mail_password_index]) as server:
+#             server.sendmail(data[mail_index][ConfigHandler.mail_address_index], to_email,
+#                             message)
+#     except (SMTPDataError, SMTPAuthenticationError, SMTPConnectError, SMTPServerDisconnected,
+#             SMTPSenderRefused) as error:
+#         errorHandler(error)
+#
+#
+# def thread_gen(count: int, func, to_email: str, text: str) -> None:
+#     database_indexes = [randrange(len(data)) for _ in range(count)]
+#
+#     threads = [
+#         Thread(target=func, args=(text, to_email, index)) for index in database_indexes
+#     ]
+#     for thread in threads:
+#         thread.start()
+#     for thread in threads:
+#         thread.join()
 
 
 @dispatcher.message_handler(commands=['start'])
 async def start(message: types.Message):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    keyboard = [
+        [
+            types.KeyboardButton(TYPES.button_start),
+            types.KeyboardButton(TYPES.button_services_count)
+        ],
+        [
+            types.KeyboardButton(TYPES.button_info),
+            types.KeyboardButton(TYPES.button_contact)
+        ]
+    ]
 
-    button_start = types.KeyboardButton(TYPES.button_start)
-    button_info = types.KeyboardButton(TYPES.button_info)
-    button_services_count = types.KeyboardButton(TYPES.button_services_count)
-    button_contact = types.KeyboardButton(TYPES.button_contact)
-    button_private = types.KeyboardButton(TYPES.button_private)
+    if message.from_user.id in ast.literal_eval(ConfigHandler.admins):
+        keyboard.append(
+            [
+                types.KeyboardButton(TYPES.button_change),
+                types.KeyboardButton(TYPES.button_block),
+            ]
+        )
 
-    markup.add(button_start, button_services_count, button_info, button_contact, button_private)
+    if not database.check_user(ConfigHandler.table_name, message.from_user.id):
+        database.add_user(ConfigHandler.table_name, message.from_user.first_name,
+                          message.from_user.last_name, message.from_user.username, message.from_user.id)
 
-    await message.answer('Greetings, traveller..', parse_mode='html', reply_markup=markup)
+    markup = types.ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
+
+    await message.answer('Greetings, traveller..', reply_markup=markup)
 
 
 # @dispatcher.message_handler(commands=Types.admin_commands)
 # async def admin_handler(message: types.Message):
 #     text = message.text.split(' ')
 #
-#     if text[Consts.command_index] == Consts.change_status:
-#         database.change_status(ConfigHandler.table_name, text[Consts.command_second], text[Consts.command_third])
-#         await message.answer(f'{text[Consts.command_second]} status changed successfully')
 
 
 @dispatcher.message_handler(content_types=['text'], state=None)
@@ -79,72 +92,107 @@ async def button_recognizer(message: types.Message):
     if message.text == TYPES.button_start:
         await message.answer("enter the number with format:\n+7XXXXXXXXXX")
         await STATES.bombing.set()
+
     elif message.text == TYPES.button_services_count:
         result = requests.get(
             ConfigHandler.status_link, params=TYPES.params_dict
         ).json()
         count = result.get('count')
         await message.answer(f"available services count: {count}")
+
     elif message.text == TYPES.button_info:
         await message.answer(STRINGS.info_string)
+
     elif message.text == TYPES.button_contact:
         await message.answer(STRINGS.contact_string)
-    elif message.text == TYPES.button_private:
-        await message.answer(STRINGS.private_string)
+
+    elif message.text == TYPES.button_change:
+        await STATES.changing.set()
+
+    elif message.text == TYPES.button_block:
+        await STATES.blocking.set()
 
 
 @dispatcher.message_handler(state=STATES.bombing)
 async def start_bombing(message: types.Message, state: FSMContext):
-    text = message.text.split(' ')
+    try:
+        text = message.text.split(' ')
+        count = int(text[CONSTS.command_second])
 
-    response = requests.post(
-        ConfigHandler.attack_link,
-        json={ConfigHandler.api_number: int(text[CONSTS.command_second]),
-              ConfigHandler.api_phone: text[CONSTS.command_first]},
-    ).json()
-    status = response.get('success')
-    identifier = response.get('id')
-    await state.update_data(id=identifier)
+        if not database.check_user_status(ConfigHandler.table_name, message.from_user.id):
+            count = CONSTS.base_laps_count
 
-    inline_markup = types.InlineKeyboardMarkup()
-    button_status = types.InlineKeyboardButton(TYPES.button_status, callback_data=TYPES.callback_status)
-    button_stop = types.InlineKeyboardButton(TYPES.button_stop, callback_data=TYPES.callback_stop)
-    inline_markup.add(button_status, button_stop)
+        response = requests.post(
+            ConfigHandler.attack_link,
+            json={ConfigHandler.api_number: count,
+                  ConfigHandler.api_phone: text[CONSTS.command_first]},
+        ).json()
 
-    if status:
-        await message.answer(f"attack to {text[CONSTS.command_first]}", reply_markup=inline_markup)
-    else:
-        await message.answer(f"error, try again")
+        database.update_record(ConfigHandler.table_name, message.from_user.id,
+                               text[CONSTS.command_first])
 
-    await state.finish()
+        status = response.get('success')
+        identifier = response.get('id')
+        await state.update_data(id=identifier)
+
+        inline_markup = types.InlineKeyboardMarkup(
+            [
+                types.InlineKeyboardButton(text=TYPES.button_status, callback_data=TYPES.callback_status),
+                types.InlineKeyboardButton(text=TYPES.button_stop, callback_data=TYPES.callback_stop)
+            ]
+        )
+        # button_status = types.InlineKeyboardButton(text=TYPES.button_status, callback_data=TYPES.callback_status)
+        # button_stop = types.InlineKeyboardButton(text=TYPES.button_stop, callback_data=TYPES.callback_stop)
+        # inline_markup.add(button_status, button_stop)
+
+        if status:
+            await message.answer(f"attack to {text[CONSTS.command_first]}", reply_markup=inline_markup)
+        else:
+            await message.answer(f"error, try again")
+
+    except (IndexError, ValueError, TypeError) as error:
+        errorHandler(error)
+        await message.answer('cancel')
+
+    finally:
+        await state.finish()
+
+
+@dispatcher.message_handler(state=STATES.changing)
+async def change_subscription_status(message: types.Message, state: FSMContext):
+    try:
+        text = message.text.split(' ')
+        database.change_status(ConfigHandler.table_name, text[CONSTS.command_first],
+                               bool(int(text[CONSTS.command_second])))
+        await message.answer(f'{text[CONSTS.command_first]} status changed')
+
+    except (IndexError, ValueError, TypeError) as error:
+        errorHandler(error)
+        await message.answer('cancel')
+
+    finally:
+        await state.finish()
+
+
+@dispatcher.message_handler(state=STATES.blocking)
+async def block_user(message: types.Message, state: FSMContext):
+    try:
+        text = message.text.split(' ')
+        database.block_user(ConfigHandler.table_name, text[CONSTS.command_first])
+        await message.answer(f'user {text[CONSTS.command_first]} blocked')
+
+    except (IndexError, ValueError, TypeError) as error:
+        errorHandler(error)
+        await message.answer('cancel')
+
+    finally:
+        await state.finish()
 
 
 @dispatcher.callback_query_handler(lambda call: call.data == TYPES.button_status)
 async def inline_handling(callback_query: types.CallbackQuery):
+    print('feck')
     await callback_query.answer('test inline button')
-
-
-
-
-# @dispatcher.message_handler(commands=['test_up', 'test_add', 'test_change', 'test_check', 'start_spam'])
-# async def send(message: types.Message):
-#     text = message.text.split(' ')
-#     if text[0] == '/test_up':
-#         database.update_record(ConfigHandler.table_name, message.from_user.id, text[1])
-#         await message.answer('test successful!')
-#
-#     elif text[0] == '/test_add':
-#         if not database.check_user(ConfigHandler.table_name, message.from_user.username):
-#             database.add_user(ConfigHandler.table_name, message.from_user.first_name, message.from_user.last_name,
-#                               message.from_user.username, message.from_user.id)
-#             await message.answer('added successful')
-#         else:
-#             await message.answer('user already in database')
-#
-#     elif text[0] == '/test_check':
-#         result = database.check_user_status(ConfigHandler.table_name, message.from_user.id)
-#         await message.answer(f'status : {result}')
-#
 
 
 if __name__ == '__main__':

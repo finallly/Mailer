@@ -2,5 +2,7 @@ from aiogram.dispatcher.filters.state import StatesGroup, State
 
 
 class STATES(StatesGroup):
-    bombing = State()
     default = State()
+    bombing = State()
+    changing = State()
+    blocking = State()
