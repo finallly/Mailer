@@ -3,19 +3,15 @@ import csv
 import requests
 import ast
 
-from random import randrange
-from threading import Thread
 from aiogram.dispatcher import FSMContext
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 
 from stateHandler import STATES
 from sqlHandler import SQLHandler
-from smtpConnect import smtpConnect
 from configHandler import ConfigHandler
 from sqlHandler.consts import TYPES, CONSTS, STRINGS
-from errorHandling import errorHandler, SMTPDataError, SMTPAuthenticationError, SMTPConnectError, \
-    SMTPServerDisconnected, SMTPSenderRefused
+from errorHandling import errorHandler
 
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=ConfigHandler.token)
@@ -26,29 +22,6 @@ database = SQLHandler()
 data = [_ for _ in csv.reader(
     open(ConfigHandler.csv_file_name, mode=ConfigHandler.reading_mode, encoding=ConfigHandler.csv_encoding),
     delimiter=ConfigHandler.csv_delimiter)]
-
-
-# def worker(message: str, to_email: str, mail_index: int) -> None:
-#     try:
-#         with smtpConnect(ConfigHandler.server_address, data[mail_index][ConfigHandler.mail_address_index],
-#                          data[mail_index][ConfigHandler.mail_password_index]) as server:
-#             server.sendmail(data[mail_index][ConfigHandler.mail_address_index], to_email,
-#                             message)
-#     except (SMTPDataError, SMTPAuthenticationError, SMTPConnectError, SMTPServerDisconnected,
-#             SMTPSenderRefused) as error:
-#         errorHandler(error)
-#
-#
-# def thread_gen(count: int, func, to_email: str, text: str) -> None:
-#     database_indexes = [randrange(len(data)) for _ in range(count)]
-#
-#     threads = [
-#         Thread(target=func, args=(text, to_email, index)) for index in database_indexes
-#     ]
-#     for thread in threads:
-#         thread.start()
-#     for thread in threads:
-#         thread.join()
 
 
 @dispatcher.message_handler(commands=['start'])
@@ -89,6 +62,7 @@ async def button_recognizer(message: types.Message):
 
     if message.text == TYPES.button_start:
         await message.answer(STRINGS.bomb_string)
+
         await STATES.bombing.set()
 
     elif message.text == TYPES.button_services_count:
@@ -117,6 +91,9 @@ async def start_bombing(message: types.Message, state: FSMContext):
         text = message.text.split(' ')
         count = int(text[CONSTS.command_second])
 
+        if text[CONSTS.command_first] in ConfigHandler.block_list:
+            return
+
         if not database.check_user_status(ConfigHandler.table_name, message.from_user.id):
             if count > CONSTS.base_laps_count:
                 count = CONSTS.base_laps_count
@@ -132,6 +109,7 @@ async def start_bombing(message: types.Message, state: FSMContext):
 
         status = response.get('success')
         identifier = response.get('id')
+
         await state.update_data(
             {
                 'id': identifier
@@ -193,20 +171,24 @@ async def inline_handling(callback_query: types.CallbackQuery, state: FSMContext
     if callback_query.data == TYPES.callback_status:
         id = await state.get_data()
         id = id.get('id')
+
         response = requests.get(
-            ConfigHandler.attack_status_link + id + '/status', params=TYPES.params_dict
+            ConfigHandler.attack_mod_link + id + ConfigHandler.mod_status, params=TYPES.params_dict
         ).json()
         sent, end = response.get('currently_at'), response.get('end_at')
+
         await bot.send_message(chat_id, STRINGS.messages_string.format(end - sent))
 
     elif callback_query.data == TYPES.callback_stop:
         id = await state.get_data()
         id = id.get('id')
-        response = requests.post(
-            ConfigHandler.attack_status_link + id + '/stop', params=TYPES.params_dict
+
+        requests.post(
+            ConfigHandler.attack_mod_link + id + ConfigHandler.mod_stop, params=TYPES.params_dict
         ).json()
-        await bot.send_message(chat_id, 'attack stopped', reply_markup=None)
-        await bot.edit_message_text(chat_id, message_id=callback_query.message.message_id)  # TODO: delete buttons here
+
+        await bot.edit_message_text(chat_id=chat_id, message_id=callback_query.message.message_id,
+                                    text='attack stopped')
 
 
 if __name__ == '__main__':
