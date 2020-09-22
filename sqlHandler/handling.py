@@ -9,10 +9,10 @@ class SQLHandler:
     @staticmethod
     def update_record(table: str, id: int, record: str) -> None:
         """
-        adds data to database # FIXME: fix this retarded docstring
-        :param id:
-        :param table: table name
-        :param record: data
+        this method updates information that user gave to bot
+        :param table: sql table name
+        :param id: user telegram id
+        :param record: new record
         :return: None
         """
 
@@ -34,12 +34,12 @@ class SQLHandler:
     @staticmethod
     def add_user(table: str, first: str, last: str, username: str, id: int) -> None:
         """
-        # TODO: docstring here!
-        :param id:
-        :param first:
-        :param last:
-        :param table:
-        :param username:
+        this method adds new user to database
+        :param table: sql table name
+        :param first: user telegram first name
+        :param last: user telegram last name
+        :param id: user telegram id
+        :param username: user`s telegram username
         :return: None
         """
         with SqlHandler() as sql:
@@ -51,11 +51,11 @@ class SQLHandler:
     @staticmethod
     def change_status(table: str, id: int, status: bool) -> None:
         """
-        # TODO: add here!
-        :param id:
-        :param table:
-        :param status:
-        :return:
+        this method changes user`s status to VIP or back
+        :param table: sql table name
+        :param id: user telegram id
+        :param status: new user status
+        :return: None
         """
         with SqlHandler() as sql:
             sql.execute(f"UPDATE {table} SET {CONSTS.status} = {status} WHERE {CONSTS.id} = '{id}'")
@@ -63,10 +63,10 @@ class SQLHandler:
     @staticmethod
     def check_user(table: str, id: int) -> bool:
         """
-
-        :param id:
-        :param table:
-        :return:
+        this method checks if user is already in database
+        :param table: sql table name
+        :param id: user telegram id
+        :return: True or False
         """
         with SqlHandler() as sql:
             sql.execute(f"SELECT * FROM {table} WHERE {CONSTS.id} = '{id}'")
@@ -76,10 +76,10 @@ class SQLHandler:
     @staticmethod
     def get_user_info(table: str, id: int) -> None:
         """
-
-        :param table:
-        :param id:
-        :return:
+        this method shows user`s activity
+        :param table: sql table name
+        :param id: user telegram id
+        :return: None
         """
         with SqlHandler() as sql:
             sql.execute(f"SELECT {CONSTS.info} FROM {table} WHERE {CONSTS.id} = '{id}'")
@@ -88,10 +88,10 @@ class SQLHandler:
     @staticmethod
     def check_user_status(table: str, id: int) -> bool:
         """
-
-        :param table:
-        :param id:
-        :return:
+        this method checks that the user has VIP status
+        :param table: sql table name
+        :param id: user telegram id
+        :return: True of False
         """
         with SqlHandler() as sql:
             sql.execute(f"SELECT {CONSTS.status} FROM {table} WHERE {CONSTS.id} = '{id}'")
@@ -99,12 +99,25 @@ class SQLHandler:
             return result
 
     @staticmethod
-    def block_user(table: str, id: int):
+    def block_user(table: str, id: int) -> None:
         """
-
-        :param table:
-        :param id:
-        :return:
+        this method adds user`s id to block list so he cant change his username or name to access the bot
+        :param table: sql table name
+        :param id: user telegram id
+        :return: None
         """
         with SqlHandler() as sql:
             sql.execute(f"UPDATE {table} SET {CONSTS.is_blocked} = {True} WHERE {CONSTS.id} = '{id}'")
+
+    @staticmethod
+    def check_block(table: str, id: int) -> bool:
+        """
+        this method checks if user is banned
+        :param table: sql table name
+        :param id: user telegram id
+        :return: True of False
+        """
+        with SqlHandler() as sql:
+            sql.execute(f"SELECT {CONSTS.is_blocked} FROM {table} WHERE {CONSTS.id} = '{id}'")
+            result = bool(int(sql.fetchall()[0][0]))
+            return result

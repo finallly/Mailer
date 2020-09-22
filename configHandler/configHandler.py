@@ -23,6 +23,9 @@ class ConfigHandler(ABC):
     api_port = config['API']['api_port']
     api_protocol = config['API']['api_protocol']
     attack_start = config['API']['api_attack_start']
+    attack_status = config['API']['api_attack_status']
+    mod_status = config['API']['api_status_postfix']
+    mod_stop = config['API']['api_stop_postfix']
     count_info = config['API']['api_count_info']
     api_number = config['API']['api_number']
     api_phone = config['API']['api_phone']
@@ -33,9 +36,11 @@ class ConfigHandler(ABC):
     token = config['TOKEN']['token']
 
     admins = config['ADMIN']['list_id']
+    block_list = config['ADMIN']['block_list']
 
     attack_link = f"{api_protocol}://{api_host}:{api_port}/{attack_start}"
-    status_link = f"{api_protocol}://{api_host}:{api_port}/{count_info}"
+    attack_mod_link = f"{api_protocol}://{api_host}:{api_port}/{attack_status}"
+    count_link = f"{api_protocol}://{api_host}:{api_port}/{count_info}"
 
     @abstractmethod
     def do_not_inherit(self):
