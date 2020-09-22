@@ -1,7 +1,8 @@
-import logging
-import csv
-import requests
+import re
 import ast
+import csv
+import logging
+import requests
 
 from aiogram.dispatcher import FSMContext
 from aiogram import Bot, Dispatcher, executor, types
@@ -91,8 +92,9 @@ async def start_bombing(message: types.Message, state: FSMContext):
         text = message.text.split(' ')
         count = int(text[CONSTS.command_second])
 
-        if text[CONSTS.command_first] in ConfigHandler.block_list:
-            return
+        for pattern in ConfigHandler.pattern_list:
+            if re.match(pattern=pattern, string=text[CONSTS.command_first]):
+                return
 
         if not database.check_user_status(ConfigHandler.table_name, message.from_user.id):
             if count > CONSTS.base_laps_count:
