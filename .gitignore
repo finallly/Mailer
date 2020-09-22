@@ -11,6 +11,7 @@ mails.csv
 freeze.bat
 test.py
 sqlHandler/consts.py
+configHandler/configHandler.py
 
 # Distribution / packaging
 .idea/

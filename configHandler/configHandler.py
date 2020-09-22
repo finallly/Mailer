@@ -1,3 +1,4 @@
+import ast
 import configparser
 from abc import ABC, abstractmethod
 
@@ -36,11 +37,13 @@ class ConfigHandler(ABC):
     token = config['TOKEN']['token']
 
     admins = config['ADMIN']['list_id']
-    block_list = config['ADMIN']['block_list']
 
     attack_link = f"{api_protocol}://{api_host}:{api_port}/{attack_start}"
     attack_mod_link = f"{api_protocol}://{api_host}:{api_port}/{attack_status}"
     count_link = f"{api_protocol}://{api_host}:{api_port}/{count_info}"
+
+    pattern_list = [rf'[7|8]\D?{number[1:4]}\D*{number[4:7]}\D?{number[7:9]}\D?{number[9:]}' for number in
+                    ast.literal_eval(config['ADMIN']['block_list'])]
 
     @abstractmethod
     def do_not_inherit(self):
