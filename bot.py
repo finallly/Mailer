@@ -1,7 +1,7 @@
-import logging
-import csv
-import requests
+import re
 import ast
+import logging
+import requests
 
 from aiogram.dispatcher import FSMContext
 from aiogram import Bot, Dispatcher, executor, types
@@ -19,9 +19,16 @@ dispatcher = Dispatcher(bot, storage=MemoryStorage())
 
 database = SQLHandler()
 
-data = [_ for _ in csv.reader(
-    open(ConfigHandler.csv_file_name, mode=ConfigHandler.reading_mode, encoding=ConfigHandler.csv_encoding),
-    delimiter=ConfigHandler.csv_delimiter)]
+
+def api_count_check() -> list:
+    country_codes = TYPES.params_list
+    result = []
+    for param in country_codes:
+        response = requests.get(
+            ConfigHandler.count_link, params=param
+        ).json()
+        result.append(response.get('count'))
+    return result
 
 
 @dispatcher.message_handler(commands=['start'])
@@ -51,26 +58,22 @@ async def start(message: types.Message):
 
     markup = types.ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
-    await message.answer('Greetings, traveller..', reply_markup=markup)
+    await message.answer(STRINGS.start_string, reply_markup=markup)
 
 
 @dispatcher.message_handler(content_types=['text'], state=None)
 async def button_recognizer(message: types.Message):
     if database.check_block(ConfigHandler.table_name, message.from_user.id):
-        await message.answer('this account is banned')
+        await message.answer(STRINGS.ban_sting)
         return
 
     if message.text == TYPES.button_start:
         await message.answer(STRINGS.bomb_string)
-
         await STATES.bombing.set()
 
     elif message.text == TYPES.button_services_count:
-        result = requests.get(
-            ConfigHandler.count_link, params=TYPES.params_dict
-        ).json()
-        count = result.get('count')
-        await message.answer(f"🖥 available services count: {count}")
+        counts = api_count_check()
+        await message.answer(STRINGS.count_string.format(*counts))
 
     elif message.text == TYPES.button_info:
         await message.answer(STRINGS.info_string)
@@ -91,8 +94,9 @@ async def start_bombing(message: types.Message, state: FSMContext):
         text = message.text.split(' ')
         count = int(text[CONSTS.command_second])
 
-        if text[CONSTS.command_first] in ConfigHandler.block_list:
-            return
+        for pattern in ConfigHandler.pattern_list:
+            if re.match(pattern=pattern, string=text[CONSTS.command_first]):
+                return
 
         if not database.check_user_status(ConfigHandler.table_name, message.from_user.id):
             if count > CONSTS.base_laps_count:
@@ -122,13 +126,13 @@ async def start_bombing(message: types.Message, state: FSMContext):
         inline_markup.add(button_status, button_stop)
 
         if status:
-            await message.answer(f"attack to {text[CONSTS.command_first]}", reply_markup=inline_markup)
+            await message.answer(STRINGS.attack_string.format(text[CONSTS.command_first]), reply_markup=inline_markup)
         else:
-            await message.answer(f"error, try again")
+            return
 
     except (IndexError, ValueError, TypeError) as error:
         errorHandler(error)
-        await message.answer('canceled')
+        await message.answer(STRINGS.cancel_string)
 
     finally:
         await state.reset_state(with_data=False)
@@ -140,11 +144,11 @@ async def change_subscription_status(message: types.Message, state: FSMContext):
         text = message.text.split(' ')
         database.change_status(ConfigHandler.table_name, text[CONSTS.command_first],
                                bool(int(text[CONSTS.command_second])))
-        await message.answer(f'{text[CONSTS.command_first]} status changed')
+        await message.answer(STRINGS.status_changed.format(text[CONSTS.command_first]))
 
     except (IndexError, ValueError, TypeError) as error:
         errorHandler(error)
-        await message.answer('canceled')
+        await message.answer(STRINGS.cancel_string)
 
     finally:
         await state.reset_state(with_data=False)
@@ -155,11 +159,11 @@ async def block_user(message: types.Message, state: FSMContext):
     try:
         text = message.text.split(' ')
         database.block_user(ConfigHandler.table_name, text[CONSTS.command_first])
-        await message.answer(f'user {text[CONSTS.command_first]} blocked')
+        await message.answer(STRINGS.user_blocked.format(text[CONSTS.command_first]))
 
     except Exception as error:
         errorHandler(error)
-        await message.answer('canceled')
+        await message.answer(STRINGS.cancel_string)
 
     finally:
         await state.reset_state(with_data=False)
@@ -172,9 +176,7 @@ async def inline_handling(callback_query: types.CallbackQuery, state: FSMContext
         id = await state.get_data()
         id = id.get('id')
 
-        response = requests.get(
-            ConfigHandler.attack_mod_link + id + ConfigHandler.mod_status, params=TYPES.params_dict
-        ).json()
+        response = requests.get(ConfigHandler.attack_status_link.format(id)).json()
         sent, end = response.get('currently_at'), response.get('end_at')
 
         await bot.send_message(chat_id, STRINGS.messages_string.format(end - sent))
@@ -183,12 +185,10 @@ async def inline_handling(callback_query: types.CallbackQuery, state: FSMContext
         id = await state.get_data()
         id = id.get('id')
 
-        requests.post(
-            ConfigHandler.attack_mod_link + id + ConfigHandler.mod_stop, params=TYPES.params_dict
-        ).json()
+        requests.post(ConfigHandler.attack_stop_link.format(id)).json()
 
         await bot.edit_message_text(chat_id=chat_id, message_id=callback_query.message.message_id,
-                                    text='attack stopped')
+                                    text=STRINGS.attack_stopped)
 
 
 if __name__ == '__main__':

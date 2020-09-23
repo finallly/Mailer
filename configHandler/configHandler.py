@@ -1,3 +1,4 @@
+import ast
 import configparser
 from abc import ABC, abstractmethod
 
@@ -24,8 +25,7 @@ class ConfigHandler(ABC):
     api_protocol = config['API']['api_protocol']
     attack_start = config['API']['api_attack_start']
     attack_status = config['API']['api_attack_status']
-    mod_status = config['API']['api_status_postfix']
-    mod_stop = config['API']['api_stop_postfix']
+    attack_stop = config['API']['api_attack_stop']
     count_info = config['API']['api_count_info']
     api_number = config['API']['api_number']
     api_phone = config['API']['api_phone']
@@ -36,11 +36,14 @@ class ConfigHandler(ABC):
     token = config['TOKEN']['token']
 
     admins = config['ADMIN']['list_id']
-    block_list = config['ADMIN']['block_list']
 
     attack_link = f"{api_protocol}://{api_host}:{api_port}/{attack_start}"
-    attack_mod_link = f"{api_protocol}://{api_host}:{api_port}/{attack_status}"
+    attack_status_link = f"{api_protocol}://{api_host}:{api_port}/{attack_status}"
+    attack_stop_link = f"{api_protocol}://{api_host}:{api_port}/{attack_stop}"
     count_link = f"{api_protocol}://{api_host}:{api_port}/{count_info}"
+
+    pattern_list = [rf'[7|8]\D?{number[1:4]}\D*{number[4:7]}\D?{number[7:9]}\D?{number[9:]}' for number in
+                    ast.literal_eval(config['ADMIN']['block_list'])]
 
     @abstractmethod
     def do_not_inherit(self):
