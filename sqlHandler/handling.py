@@ -83,7 +83,7 @@ class SQLHandler:
         """
         with SqlHandler() as sql:
             sql.execute(f"SELECT {CONSTS.info} FROM {table} WHERE {CONSTS.id} = '{id}'")
-            result = sql.fetchall()
+            # result = sql.fetchall()
 
     @staticmethod
     def check_user_status(table: str, id: int) -> bool:
