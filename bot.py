@@ -76,7 +76,9 @@ async def button_recognizer(message: types.Message):
         await message.answer(STRINGS.count_string.format(*counts))
 
     elif message.text == TYPES.button_info:
-        await message.answer(STRINGS.info_string)
+        status = database.check_user_status(ConfigHandler.table_name, message.from_user.id)
+        await message.answer(STRINGS.info_string.format(TYPES.naming_lambda(status),
+                                                        TYPES.cycle_count_lambda(status)))
 
     elif message.text == TYPES.button_contact:
         await message.answer(STRINGS.contact_string)
