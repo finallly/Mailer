@@ -20,6 +20,12 @@ class ConfigHandler(ABC):
     table_name = config['DATABASE']['table_name']
     auth_plugin = config['DATABASE']['auth_plugin']
 
+    log_file_name = config['LOG']['log_file']
+    log_format = config['LOG']['logging_format']
+    log_level = config['LOG']['logging_level']
+    log_rotation = config['LOG']['rotation_file']
+    log_compression = config['LOG']['compression_type']
+
     api_host = config['API']['api_host']
     api_port = config['API']['api_port']
     api_protocol = config['API']['api_protocol']

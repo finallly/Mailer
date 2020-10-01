@@ -1,7 +1,7 @@
 import re
 import ast
-import logging
 import requests
+from loguru import logger
 
 from aiogram.dispatcher import FSMContext
 from aiogram import Bot, Dispatcher, executor, types
@@ -11,15 +11,16 @@ from stateHandler import STATES
 from sqlHandler import SQLHandler
 from configHandler import ConfigHandler
 from sqlHandler.consts import TYPES, CONSTS, STRINGS
-from errorHandling import errorHandler
 
-logging.basicConfig(level=logging.INFO)
+logger.add(ConfigHandler.log_file_name, format=ConfigHandler.log_format, level=ConfigHandler.log_level,
+           rotation=ConfigHandler.log_rotation, compression=ConfigHandler.log_compression)
 bot = Bot(token=ConfigHandler.token)
 dispatcher = Dispatcher(bot, storage=MemoryStorage())
 
 database = SQLHandler()
 
 
+@logger.catch()
 def api_count_check() -> list:
     country_codes = TYPES.params_list
     result = []
@@ -56,6 +57,8 @@ async def start(message: types.Message):
         database.add_user(ConfigHandler.table_name, message.from_user.first_name,
                           message.from_user.last_name, message.from_user.username, message.from_user.id)
 
+        logger.info(STRINGS.logger_new_user_string)
+
     markup = types.ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
     await message.answer(STRINGS.start_string, reply_markup=markup)
@@ -65,6 +68,8 @@ async def start(message: types.Message):
 async def button_recognizer(message: types.Message):
     if database.check_block(ConfigHandler.table_name, message.from_user.id):
         await message.answer(STRINGS.ban_sting)
+
+        logger.info(STRINGS.block_user_action)
         return
 
     if message.text == TYPES.button_start:
@@ -76,7 +81,10 @@ async def button_recognizer(message: types.Message):
         await message.answer(STRINGS.count_string.format(*counts))
 
     elif message.text == TYPES.button_info:
-        await message.answer(STRINGS.info_string)
+        status = database.check_user_status(ConfigHandler.table_name, message.from_user.id)
+        logger.info(STRINGS.info_user_action)
+        await message.answer(STRINGS.info_string.format(TYPES.naming_lambda(status),
+                                                        TYPES.cycle_count_lambda(status)))
 
     elif message.text == TYPES.button_contact:
         await message.answer(STRINGS.contact_string)
@@ -99,8 +107,9 @@ async def start_bombing(message: types.Message, state: FSMContext):
                 return
 
         if not database.check_user_status(ConfigHandler.table_name, message.from_user.id):
-            if count > CONSTS.base_laps_count:
-                count = CONSTS.base_laps_count
+            count = count if count <= CONSTS.base_laps_count else CONSTS.base_laps_count
+        else:
+            count = count if count <= CONSTS.max_laps_count else CONSTS.max_laps_count
 
         response = requests.post(
             ConfigHandler.attack_link,
@@ -127,11 +136,12 @@ async def start_bombing(message: types.Message, state: FSMContext):
 
         if status:
             await message.answer(STRINGS.attack_string.format(text[CONSTS.command_first]), reply_markup=inline_markup)
+            logger.success(STRINGS.successful_attack.format(count))
         else:
             return
 
-    except (IndexError, ValueError, TypeError) as error:
-        errorHandler(error)
+    except (IndexError, ValueError, TypeError):
+        logger.warning(STRINGS.user_input_error)
         await message.answer(STRINGS.cancel_string)
 
     finally:
@@ -146,8 +156,8 @@ async def change_subscription_status(message: types.Message, state: FSMContext):
                                bool(int(text[CONSTS.command_second])))
         await message.answer(STRINGS.status_changed.format(text[CONSTS.command_first]))
 
-    except (IndexError, ValueError, TypeError) as error:
-        errorHandler(error)
+    except (IndexError, ValueError, TypeError):
+        logger.warning(STRINGS.change_status_input_error)
         await message.answer(STRINGS.cancel_string)
 
     finally:
@@ -161,8 +171,8 @@ async def block_user(message: types.Message, state: FSMContext):
         database.block_user(ConfigHandler.table_name, text[CONSTS.command_first])
         await message.answer(STRINGS.user_blocked.format(text[CONSTS.command_first]))
 
-    except Exception as error:
-        errorHandler(error)
+    except Exception:
+        logger.warning(STRINGS.block_user_input_error)
         await message.answer(STRINGS.cancel_string)
 
     finally:
@@ -172,6 +182,7 @@ async def block_user(message: types.Message, state: FSMContext):
 @dispatcher.callback_query_handler(lambda call: True)
 async def inline_handling(callback_query: types.CallbackQuery, state: FSMContext):
     chat_id = callback_query.message.chat.id
+
     if callback_query.data == TYPES.callback_status:
         id = await state.get_data()
         id = id.get('id')
@@ -179,7 +190,7 @@ async def inline_handling(callback_query: types.CallbackQuery, state: FSMContext
         response = requests.get(ConfigHandler.attack_status_link.format(id)).json()
         sent, end = response.get('currently_at'), response.get('end_at')
 
-        await bot.send_message(chat_id, STRINGS.messages_string.format(end - sent))
+        await bot.send_message(chat_id, STRINGS.messages_string.format((end - sent) // 5))
 
     elif callback_query.data == TYPES.callback_stop:
         id = await state.get_data()
@@ -191,5 +202,13 @@ async def inline_handling(callback_query: types.CallbackQuery, state: FSMContext
                                     text=STRINGS.attack_stopped)
 
 
-if __name__ == '__main__':
+@logger.catch()
+def main():
     executor.start_polling(dispatcher, skip_updates=True)
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except Exception:
+        logger.critical(STRINGS.start_bot_error)
