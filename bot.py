@@ -50,6 +50,7 @@ async def start(message: types.Message):
             [
                 types.KeyboardButton(TYPES.button_change),
                 types.KeyboardButton(TYPES.button_block),
+                types.KeyboardButton(TYPES.button_notify)
             ]
         )
 
@@ -73,8 +74,8 @@ async def button_recognizer(message: types.Message):
         return
 
     if message.text == TYPES.button_start:
-        await message.answer(STRINGS.bomb_string)
-        await STATES.bombing.set()
+        await message.answer(STRINGS.phone_string)
+        await STATES.entering_data.set()
 
     elif message.text == TYPES.button_services_count:
         counts = api_count_check()
@@ -95,15 +96,46 @@ async def button_recognizer(message: types.Message):
     elif message.text == TYPES.button_block:
         await STATES.blocking.set()
 
+    elif message.text == TYPES.button_notify:
+        await STATES.notify.set()
+
+
+@dispatcher.message_handler(state=STATES.entering_data)
+async def get_number(message: types.Message, state: FSMContext):
+    try:
+        text = message.text
+
+        if not re.match(pattern=TYPES.ru_regex, string=text) and not \
+                re.match(pattern=TYPES.uk_regex, string=text) and not \
+                re.match(pattern=TYPES.by_regex, string=text):
+            await message.answer(STRINGS.wrong_number_string)
+            await state.reset_state(with_data=False)
+            return
+
+        await state.update_data(
+            {
+                'number': text
+            }
+        )
+
+        await message.answer(STRINGS.cycles_count_string)
+        await STATES.bombing.set()
+
+    except (IndexError, ValueError, TypeError) as error:
+        logger.warning(STRINGS.enter_phone_number_error)
+        await message.answer(STRINGS.cancel_string)
+
 
 @dispatcher.message_handler(state=STATES.bombing)
 async def start_bombing(message: types.Message, state: FSMContext):
     try:
-        text = message.text.split(' ')
-        count = int(text[CONSTS.command_second])
+        count = int(message.text)
+
+        data = await state.get_data()
+        phone = data.get('number')
 
         for pattern in ConfigHandler.pattern_list:
-            if re.match(pattern=pattern, string=text[CONSTS.command_first]):
+            if re.match(pattern=pattern, string=phone):
                 return
 
         if not database.check_user_status(ConfigHandler.table_name, message.from_user.id):
@@ -114,11 +146,10 @@ async def start_bombing(message: types.Message, state: FSMContext):
         response = requests.post(
             ConfigHandler.attack_link,
             json={ConfigHandler.api_number: count,
-                  ConfigHandler.api_phone: text[CONSTS.command_first]},
+                  ConfigHandler.api_phone: phone},
         ).json()
 
-        database.update_record(ConfigHandler.table_name, message.from_user.id,
-                               text[CONSTS.command_first])
+        database.update_record(ConfigHandler.table_name, message.from_user.id, phone)
 
         status = response.get('success')
         identifier = response.get('id')
@@ -135,12 +166,12 @@ async def start_bombing(message: types.Message, state: FSMContext):
         inline_markup.add(button_status, button_stop)
 
         if status:
-            await message.answer(STRINGS.attack_string.format(text[CONSTS.command_first]), reply_markup=inline_markup)
+            await message.answer(STRINGS.attack_string.format(phone), reply_markup=inline_markup)
             logger.success(STRINGS.successful_attack.format(count))
         else:
             return
 
-    except (IndexError, ValueError, TypeError):
+    except (IndexError, ValueError, TypeError) as error:
         logger.warning(STRINGS.user_input_error)
         await message.answer(STRINGS.cancel_string)
 
@@ -170,6 +201,25 @@ async def block_user(message: types.Message, state: FSMContext):
         text = message.text.split(' ')
         database.block_user(ConfigHandler.table_name, text[CONSTS.command_first])
         await message.answer(STRINGS.user_blocked.format(text[CONSTS.command_first]))
+
+    except Exception:
+        logger.warning(STRINGS.block_user_input_error)
+        await message.answer(STRINGS.cancel_string)
+
+    finally:
+        await state.reset_state(with_data=False)
+
+
+@dispatcher.message_handler(state=STATES.notify)
+async def notify_all(message: types.Message, state: FSMContext):
+    try:
+        text = message.text
+        data = database.get_all_ids(ConfigHandler.table_name)
+        for id in data:
+            try:
+                await bot.send_message(id, text)
+            except Exception:
+                continue
 
     except Exception:
         logger.warning(STRINGS.block_user_input_error)
