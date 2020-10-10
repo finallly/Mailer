@@ -121,3 +121,15 @@ class SQLHandler:
             sql.execute(f"SELECT {CONSTS.is_blocked} FROM {table} WHERE {CONSTS.id} = '{id}'")
             result = bool(int(sql.fetchall()[0][0]))
             return result
+
+    @staticmethod
+    def get_all_ids(table: str) -> list:
+        """
+
+        :param table:
+        :return: a list of all users id
+        """
+        with SqlHandler() as sql:
+            sql.execute(f"SELECT id FROM {table}")
+            result = [tup[0] for tup in sql.fetchall()]
+            return result
