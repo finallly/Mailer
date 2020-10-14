@@ -1,5 +1,6 @@
 import re
 import ast
+import time
 import requests
 from loguru import logger
 
@@ -105,9 +106,9 @@ async def get_number(message: types.Message, state: FSMContext):
     try:
         text = message.text
 
-        if not re.match(pattern=TYPES.ru_regex, string=text) and not \
-                re.match(pattern=TYPES.uk_regex, string=text) and not \
-                re.match(pattern=TYPES.by_regex, string=text):
+        if not re.fullmatch(pattern=TYPES.ru_regex, string=text) and not \
+                re.fullmatch(pattern=TYPES.uk_regex, string=text) and not \
+                re.fullmatch(pattern=TYPES.by_regex, string=text):
             await message.answer(STRINGS.wrong_number_string)
             await state.reset_state(with_data=False)
             return
@@ -121,7 +122,7 @@ async def get_number(message: types.Message, state: FSMContext):
         await message.answer(STRINGS.cycles_count_string)
         await STATES.bombing.set()
 
-    except (IndexError, ValueError, TypeError) as error:
+    except (IndexError, ValueError, TypeError):
         logger.warning(STRINGS.enter_phone_number_error)
         await message.answer(STRINGS.cancel_string)
 
@@ -171,7 +172,7 @@ async def start_bombing(message: types.Message, state: FSMContext):
         else:
             return
 
-    except (IndexError, ValueError, TypeError) as error:
+    except (IndexError, ValueError, TypeError):
         logger.warning(STRINGS.user_input_error)
         await message.answer(STRINGS.cancel_string)
 
@@ -240,7 +241,10 @@ async def inline_handling(callback_query: types.CallbackQuery, state: FSMContext
         response = requests.get(ConfigHandler.attack_status_link.format(id)).json()
         sent, end = response.get('currently_at'), response.get('end_at')
 
-        await bot.send_message(chat_id, STRINGS.messages_string.format((end - sent) // 5))
+        try:
+            await bot.send_message(chat_id, STRINGS.messages_string.format((end - sent) // 5))
+        except (TypeError, ValueError):
+            logger.warning(STRINGS.data_lost_between_reconnection)
 
     elif callback_query.data == TYPES.callback_stop:
         id = await state.get_data()
@@ -259,6 +263,8 @@ def main():
 
 if __name__ == '__main__':
     try:
-        main()
+        while True:
+            main()
+            time.sleep(15)
     except Exception:
         logger.critical(STRINGS.start_bot_error)
