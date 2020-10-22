@@ -1,6 +1,5 @@
 import re
 import ast
-import time
 import requests
 from loguru import logger
 
@@ -265,6 +264,5 @@ if __name__ == '__main__':
     try:
         while True:
             main()
-            time.sleep(15)
     except Exception:
         logger.critical(STRINGS.start_bot_error)
